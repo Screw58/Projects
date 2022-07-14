@@ -4,10 +4,17 @@
 #include "dma.h"
 
 
+
 void DMA_Init(void)
 {
 	  __HAL_RCC_DMA2_CLK_ENABLE();
 }
+
+
+
+
+
+
 
 
 /*
@@ -50,19 +57,19 @@ void DMA_Init(void)
 	*pDMA2_CtrlReg_user &= ~(3<<6);
 
 	//stream 0 memory address register
-//	*pDMA2_SM0AR_user = buffer_1;
+	*pDMA2_SM0AR_user = buffer_1;
 
 	//stream 0 perip address register
-//	*pDMA2_SPAR_user = (uint32_t) &ADC1->DR;
+	*pDMA2_SPAR_user = (uint32_t) &ADC1->DR;
 
 //--------------v hal_dma_enable v---------------//
 	//dma enable
-//	*pDMA2_CtrlReg_user |= (1<<0);
+	*pDMA2_CtrlReg_user |= (1<<0);
 
 
 
-//  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
-//  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
 
 }
 

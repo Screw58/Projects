@@ -10,7 +10,7 @@
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 
-// ADC1 init function
+
 void ADC1_Init(void)
 {
 
@@ -61,14 +61,13 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* adcHandle)
   if(adcHandle->Instance==ADC1)
   {
 
-    /* ADC1 clock enable */
     __HAL_RCC_ADC1_CLK_ENABLE();
 
     __HAL_RCC_GPIOC_CLK_ENABLE();
-    /**ADC1 GPIO Configuration
-    PC0     ------> ADC1_IN10
-    PC1     ------> ADC1_IN11
-    */
+
+//    PC0     ------> ADC1_IN10
+//    PC1     ------> ADC1_IN11
+
     GPIO_Adc.Pin = GPIO_PIN_0|GPIO_PIN_1;
     GPIO_Adc.Mode = GPIO_MODE_ANALOG;
     GPIO_Adc.Pull = GPIO_NOPULL;
