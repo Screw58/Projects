@@ -1,5 +1,7 @@
 /**
   ******************************************************************************
+  * @author			: Jacek
+  * @name			: Solar_tracker
   * @file           : main.c
   * @brief          : Main program body
   ******************************************************************************/
@@ -16,22 +18,19 @@
 #include "stepper_motor.h"
 #include "serwo.h"
 
-#define DIFFERENCE 200
 
-#define SERWO_MIN_SAVE_POS		10	 // <! TODO
-#define SERWO_MAX_SAVE_POS		50   //<! TODO
 
 void SystemClock_Config(void);
-void Recognizing_start_func(void);
+void Recognition_func(void);
 
 stepper_t motor1 = {0};
 serwo_t serwo1={0};
 
 
-uint16_t sensors_values[4];										// 0- lewa gora, 1- lewy dol, 2- prawa gora, 3- prawy dol
+uint16_t sensors_values[4];		// 0- left upper, 1- left lower, 2- right upper, 3- right lower
 uint32_t left_sensors, right_sensors, upper_sensors, lower_sensors;
 uint8_t  starting_flag = 1 ;
-uint32_t tick_return = 0;
+uint32_t backward_angle = 0;
 
 
 
@@ -56,9 +55,13 @@ int main(void)
   Stepper_init(&motor1, &htim3, TIM_CHANNEL_1);
   Serwo_Init(&serwo1, &htim2, TIM_CHANNEL_1);
 
+/* set servo in starting position*/
+  Serwo_set_mode(&serwo1, directly);
+  Serwo_set_pos(&serwo1, 0);
+  Serwo_start(&serwo1);
 
   HAL_ADC_Start_DMA(&hadc1, sensors_values, 4);
-  Recognizing_start_func();
+  Recognition_func();
   Stepper_set_mode(&motor1, continous);
 
 
@@ -70,20 +73,19 @@ int main(void)
 	 	  }
 	  else
 	 	  {
-	 		  left_sensors>right_sensors ? Stepper_set_dir(&motor1, left) : Stepper_set_dir(&motor1, right);
+	 		  left_sensors>right_sensors ? Stepper_set_dir(&motor1, right) : Stepper_set_dir(&motor1, left);
 	 		  Stepper_start(&motor1);
 	 	  }
-	  if( ((upper_sensors>lower_sensors ? upper_sensors-lower_sensors : lower_sensors-upper_sensors) < DIFFERENCE) ||
-			  	  (serwo1.actual_position >= SERWO_MAX_SAVE_POS || serwo1.actual_position <= SERWO_MIN_SAVE_POS ))
+	  if((upper_sensors>lower_sensors ? upper_sensors-lower_sensors : lower_sensors-upper_sensors) < DIFFERENCE)
 	 	  {
 		  	  Serwo_stop(&serwo1);
 	 	  }
 	  else
 	 	  {
-		  	  upper_sensors>lower_sensors ? Serwo_set_pos(&serwo1, SERWO_MAX_SAVE_POS) : Serwo_set_pos(&serwo1, SERWO_MIN_SAVE_POS);
-		  	Serwo_start(&serwo1);
+		  	  upper_sensors>lower_sensors ? Serwo_set_pos(&serwo1, SERWO_MIN_SAVE_POS) : Serwo_set_pos(&serwo1, SERWO_MAX_SAVE_POS);
+		  	  Serwo_start(&serwo1);
 	 	  }
-
+	  HAL_Delay(100);
   }
 }
 
@@ -130,27 +132,34 @@ void SystemClock_Config(void)
 }
 
 
-
-
-
-void Recognizing_start_func(void)
+/*
+ * @brief		: This function is executing only one time at the program beginning
+ * @note		: This is setting a solar tracker at an angle of 45 degrees, doing one
+ * 				  rotation while remembering the brightest point and at the end of this
+ * 				  rotation, going back to remembered point
+ */
+void Recognition_func(void)
 {
-	 Serwo_set_mode(&serwo1, indirectly);	//SERWO NA 45 DEGREE
+	 Serwo_set_mode(&serwo1, indirectly);
+	 Serwo_set_pos(&serwo1, 45);
+	 Serwo_set_speed(&serwo1, SERWO_SPEED_3);
+	 Serwo_start(&serwo1);
+	 while(serwo1.actual_position != 45);
 
 	 Stepper_set_angle(&motor1, 360);
 	 Stepper_set_dir(&motor1, left);
 	 Stepper_set_mode(&motor1, angle);
-	 Stepper_set_speed(&motor1, 50);
+	 Stepper_set_speed(&motor1, 30);
 	 Stepper_start(&motor1);
 	 while(starting_flag) ;
-	 Stepper_set_angle(&motor1, tick_return*(ANGLE_PER_STEP / motor1.micro_steps));
+	 Stepper_set_angle(&motor1, backward_angle*(ANGLE_PER_STEP / motor1.micro_steps));
 	 Stepper_set_dir(&motor1, right);
 	 Stepper_start(&motor1);
 	 while(motor1.angle_counter != 0) ;
 }
 
 
-// 0- lewa gora, 1- lewy dol, 2- prawa gora, 3- prawy dol
+// 0- left upper, 1- left lower, 2- right upper, 3- right lower
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
 	left_sensors =  sensors_values[0] + sensors_values[1];
@@ -161,29 +170,27 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 {
+	 if(htim->Instance == TIM2)
+	 	{
+	 		Serwo_interrupt(&serwo1);
+	 	}
+
 	 if(htim->Instance == motor1.timer->Instance)
 	 {
 		 Stepper_interrupt(htim, &motor1);
 
+		 /* remembering the brightest point*/
 		 if(starting_flag)
 		 {
+			 static uint32_t point = 0xFFFFFFFF ;
+			 uint32_t currently = 0;
 
-			 static uint32_t punkt = 0xFFFFFFFF ;
-			 uint32_t git = 0;
+			 currently = right_sensors + left_sensors;
 
-			 if(left_sensors > right_sensors)
+			 if(currently < point)
 			 {
-				 git = left_sensors - right_sensors;
-			 }
-			 else if (right_sensors > left_sensors)
-			 {
-				 git = right_sensors - left_sensors;
-			 }
-
-			 if(git < punkt)
-			 {
-				 punkt = git;
-				 tick_return = motor1.angle_counter ;
+				 point = currently;
+				 backward_angle = motor1.angle_counter ;
 			 }
 
 			 if(motor1.angle_counter == 0)

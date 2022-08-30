@@ -20,11 +20,11 @@
 #define MAX_SPEED			1000
 #define MIN_SPEED			1
 
-#define DIR_PIN		GPIO_PIN_0
-#define DIR_PORT	GPIOC
+#define DIR_PIN				GPIO_PIN_0
+#define DIR_PORT			GPIOC
 
-//#define EN_PIN								//!<TODO
-//#define EN_PORT       						//!<TODO
+//#define EN_PIN
+//#define EN_PORT
 
 
 typedef enum mode {

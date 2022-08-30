@@ -29,6 +29,10 @@ void Error_Handler(void);
 #define SWO_Pin GPIO_PIN_3
 #define SWO_GPIO_Port GPIOB
 
+#define DIFFERENCE 300
+
+#define SERWO_MIN_SAVE_POS		10
+#define SERWO_MAX_SAVE_POS		80
 
 
 #endif /* __MAIN_H */
